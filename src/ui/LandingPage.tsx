@@ -102,7 +102,7 @@ export function LandingPage() {
           </header>
 
           {/* 6-column x 4-row stepped architectural grid */}
-          <div className="anim-hero-up mt-5 grid grid-cols-1 gap-3 md:mt-7 md:grid-cols-[2.1fr_1fr_1fr_1.05fr_1.05fr_1.05fr] md:gap-0">
+          <div className="anim-hero-up mt-5 grid grid-cols-1 gap-3 md:mt-7 md:grid-cols-[1.85fr_0.9fr_0.85fr_1.45fr_1fr_1fr] md:gap-0">
             {/* Main headline canvas: Cols 1-3, Rows 1-2 */}
             <div className="rounded-[24px] bg-[#ecece8] p-7 text-[#0a0a0b] md:col-span-3 md:col-start-1 md:row-span-2 md:row-start-1 md:rounded-none md:rounded-bl-[24px] md:rounded-tl-[24px] md:p-11">
               <div className="inline-flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-black/50">
@@ -150,7 +150,7 @@ export function LandingPage() {
 
             {/* Central dark rounded-square visual window: Col 4, Row 2 */}
             <div className="rounded-[20px] bg-[#ecece8] p-2 md:col-start-4 md:row-start-2 md:rounded-none">
-              <div className="anim-hero-media relative aspect-square h-full w-full overflow-hidden rounded-[20px] bg-[#060607] ring-1 ring-black/10">
+              <div className="anim-hero-media relative aspect-[5/4] h-full w-full overflow-hidden rounded-[20px] bg-[#060607] ring-1 ring-black/10">
                 <Img
                   src="/img/hero-keyboard.jpg"
                   fallback="/img/hero-arm.jpg"

@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { GestureName } from '../core/gestures/types';
 import { useBridge } from '../state/store';
 import { ConcaveFillet } from './ConcaveFillet';
 import { HandGlyph } from './HandGlyph';
@@ -34,6 +35,13 @@ function Mark({ className = '' }: { className?: string }) {
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
 /* ------------------------------------------------------------------ */
+
+const HERO_GESTURES: { gesture: GestureName; label: string; note: string; accent?: boolean }[] = [
+  { gesture: 'POINT', label: 'Select', note: 'Aim & dwell' },
+  { gesture: 'PINCH', label: 'Grab', note: 'Clutch move' },
+  { gesture: 'VICTORY', label: 'Release', note: 'Place part' },
+  { gesture: 'OPEN_PALM', label: 'E-Stop', note: '≤140 ms halt', accent: true },
+];
 
 const STEPS: [string, StepVisualKind, string, string, string][] = [
   ['01', 'move', 'Move', 'Left, right, up and down in the camera frame moves the arm across the bench and lifts it.', 'X/Y PLANAR TRANSLATION'],
@@ -96,9 +104,9 @@ export function LandingPage() {
           <button
             type="button"
             onClick={enter}
-            className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-signal px-4 text-[13px] font-medium text-[#0a0a0b] transition-all hover:bg-[#ff6240] active:scale-[0.98]"
+            className="inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/[0.03] px-4 text-[13px] font-medium text-[#ecece8] transition-all hover:border-white/25 hover:bg-white/[0.08] active:scale-[0.98]"
           >
-            Launch simulator <span aria-hidden>↗</span>
+            Open workcell <span aria-hidden>↗</span>
           </button>
         </div>
       </header>
@@ -108,84 +116,65 @@ export function LandingPage() {
         <section className="relative mt-3 overflow-hidden rounded-[32px] border border-white/[0.06] bg-[#0b0b0c]">
           <div className="anim-hero-up relative z-10 p-4 pt-5 md:p-6 md:pt-6">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-12 md:gap-0">
-              {/* Main attached light block */}
-              <div className="rounded-[24px] bg-[#ecece8] p-7 text-[#0a0a0b] md:col-span-8 md:col-start-1 md:row-start-1 md:rounded-none md:rounded-bl-[26px] md:rounded-tl-[26px] md:rounded-tr-[26px] md:p-10">
-                <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-black/55">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal" aria-hidden />
-                  <span>TARS · Gesture Teleoperation</span>
+              {/* Upper wing of monolithic L-shaped block */}
+              <div className="rounded-[24px] bg-[#ecece8] p-7 text-[#0a0a0b] md:col-span-12 md:col-start-1 md:row-start-1 md:rounded-none md:rounded-bl-[26px] md:rounded-tl-[26px] md:rounded-tr-[26px] md:p-10">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-black/55">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal" aria-hidden />
+                    <span>TARS · 6-DOF Gesture Teleoperation</span>
+                  </div>
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-black/40">
+                    Browser WebGL · Zero install
+                  </span>
                 </div>
-                <h1 className="mt-3 max-w-[600px] text-[42px] font-medium leading-[1.01] tracking-[-0.04em] md:text-[68px]">
+                <h1 className="mt-4 max-w-[760px] text-[44px] font-medium leading-[1.0] tracking-[-0.04em] md:text-[72px]">
                   Your hand is
                   <br />
                   the controller.
                 </h1>
               </div>
 
-              {/* Top-middle dark spec cell */}
-              <div className="hidden flex-col justify-between p-6 text-white md:col-span-2 md:col-start-9 md:row-start-1 md:flex">
-                <span className="font-mono text-[14px] text-signal">+</span>
-                <div>
-                  <div className="text-[13px] font-medium text-[#ecece8]">21 landmarks</div>
-                  <p className="mt-1 text-[11.5px] leading-relaxed text-white/45">On-device MediaPipe tracking via WebAssembly.</p>
-                </div>
-              </div>
-
-              {/* Detached accent launch tile */}
-              <button
-                type="button"
-                onClick={enter}
-                className="group flex flex-col justify-between rounded-[24px] bg-signal p-6 text-left text-[#0a0a0b] transition-colors hover:bg-[#ff6240] active:scale-[0.99] md:col-span-2 md:col-start-11 md:row-start-1 md:rounded-[26px]"
-              >
-                <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-black/65">00 · Live</div>
-                <div className="mt-6 flex items-end justify-between md:mt-0">
-                  <span className="text-[16px] font-semibold tracking-[-0.01em]">Launch</span>
-                  <span className="text-[20px] leading-none transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden>
-                    ↗
-                  </span>
-                </div>
-              </button>
-
-              {/* Bottom-left dark cutout */}
-              <div className="relative flex flex-col justify-between rounded-[24px] p-3 pt-4 md:col-span-5 md:col-start-1 md:row-start-2 md:rounded-none md:p-6 md:pr-8">
+              {/* Dark cutout: explanation + single primary CTA */}
+              <div className="relative flex flex-col justify-between rounded-[24px] p-3 pt-4 md:col-span-7 md:col-start-1 md:row-start-2 md:rounded-none md:p-7 md:pr-10">
                 <ConcaveFillet corner="tr" size={26} className="hidden md:block" />
-                <p className="max-w-[340px] text-[13px] leading-relaxed text-white/60">
-                  Point to select, pinch to grasp, and move in 3D space. Closed-form inverse kinematics and safety limits run locally in your browser.
+                <p className="max-w-[440px] text-[13.5px] leading-relaxed text-white/60">
+                  Track 21 hand landmarks through your webcam—or use the built-in simulated hand—to drive a six-axis industrial arm with closed-form inverse kinematics.
                 </p>
-                <div className="mt-5 flex flex-wrap items-center gap-3.5">
+                <div className="mt-6 flex flex-wrap items-center gap-5">
                   <button
                     type="button"
                     onClick={enter}
-                    className="group inline-flex h-9 items-center gap-2 rounded-full bg-[#ecece8] px-4 text-[13px] font-medium text-[#0a0a0b] transition-all hover:bg-white active:scale-[0.98]"
+                    className="group inline-flex h-10 items-center gap-2 rounded-full bg-signal px-5 text-[13.5px] font-medium text-[#0a0a0b] transition-all hover:bg-[#ff6240] active:scale-[0.98]"
                   >
                     Open workcell
                     <span className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden>
                       ↗
                     </span>
                   </button>
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/40">60 FPS · Webcam or mouse</span>
+                  <a href="#how" className="inline-flex items-center gap-1.5 text-[13px] text-white/55 transition-colors hover:text-[#ecece8]">
+                    How it works <span aria-hidden>↓</span>
+                  </a>
                 </div>
               </div>
 
-              {/* Attached downward light lobe */}
-              <div className="flex flex-col justify-between rounded-[24px] bg-[#ecece8] p-6 text-[#0a0a0b] md:col-span-3 md:col-start-6 md:row-start-2 md:rounded-none md:rounded-b-[26px] md:p-7">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-black/45">01 · Solver</span>
-                  <HandGlyph gesture="PINCH" size={28} color="#0a0a0b" strokeWidth={1.8} />
-                </div>
-                <div className="mt-6">
-                  <div className="text-[15px] font-medium tracking-[-0.01em]">6-DOF Kinematics</div>
-                  <p className="mt-1 text-[12px] leading-relaxed text-black/55">0.79 m reach envelope with bench collision floor.</p>
-                </div>
-              </div>
-
-              {/* Bottom-right dark spec cell */}
-              <div className="hidden flex-col justify-between p-6 pl-8 text-white md:col-span-4 md:col-start-9 md:row-start-2 md:flex">
-                <span className="font-mono text-[14px] text-signal">+</span>
-                <div>
-                  <div className="text-[13px] font-medium text-[#ecece8]">Simulated safety layer</div>
-                  <p className="mt-1 text-[11.5px] leading-relaxed text-white/45">
-                    Open-palm E-stop (≤140 ms), joint limits, speed clamping and tracking-loss hold.
-                  </p>
+              {/* Attached downward lobe: functional 4-gesture key */}
+              <div className="flex flex-col justify-between rounded-[24px] bg-[#ecece8] p-6 text-[#0a0a0b] md:col-span-5 md:col-start-8 md:row-start-2 md:rounded-none md:rounded-b-[26px] md:p-7">
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-black/45">Gesture map</div>
+                <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3.5">
+                  {HERO_GESTURES.map(({ gesture, label, note, accent }) => (
+                    <div key={gesture} className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-black/[0.04]">
+                        <HandGlyph gesture={gesture} size={22} color="#0a0a0b" strokeWidth={1.75} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-[13px] font-medium leading-tight">
+                          {accent && <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden />}
+                          <span>{label}</span>
+                        </div>
+                        <div className="truncate font-mono text-[10.5px] text-black/50">{note}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

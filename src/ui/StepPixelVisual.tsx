@@ -1,0 +1,94 @@
+export type StepVisualKind = 'move' | 'reach' | 'pinch';
+
+/**
+ * Compact 11x11 pixel-art icons for the "How it works" cards.
+ * '.' = transparent, '1' = dim, '2' = mid, '3' = primary ink (#ecece8), '4' = ice-cyan (#86d7f2)
+ */
+const PIXEL_ICONS: Record<StepVisualKind, string[]> = {
+  move: [
+    '.....3.....',
+    '....333....',
+    '...3.2.3...',
+    '.....2.....',
+    '.3.......3.',
+    '3322.4.2233',
+    '.3.......3.',
+    '.....2.....',
+    '...3.2.3...',
+    '....333....',
+    '.....3.....',
+  ],
+  reach: [
+    '2222.......',
+    '2..2.......',
+    '2..2.......',
+    '22221......',
+    '...14......',
+    '.....333333',
+    '.....3....3',
+    '.....3.44.3',
+    '.....3.44.3',
+    '.....3....3',
+    '.....333333',
+  ],
+  pinch: [
+    '...........',
+    '...33333...',
+    '..3.....3..',
+    '.22....222.',
+    '232....444.',
+    '232....444.',
+    '232....444.',
+    '.22....222.',
+    '..3.....3..',
+    '...33333...',
+    '...........',
+  ],
+};
+
+const CELL_FILL: Record<string, string> = {
+  '1': 'rgba(255,255,255,0.22)',
+  '2': 'rgba(255,255,255,0.48)',
+  '3': '#ecece8',
+  '4': '#86d7f2',
+};
+
+const GRID = 11;
+const CELL = 2.6;
+const GAP = 0.6;
+const STRIDE = CELL + GAP;
+const VIEW = GRID * STRIDE - GAP;
+
+export function StepPixelVisual({ kind, size = 36 }: { kind: StepVisualKind; size?: number }) {
+  const rows = PIXEL_ICONS[kind];
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${VIEW} ${VIEW}`}
+      className="shrink-0 opacity-90 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110 group-hover:opacity-100"
+      shapeRendering="crispEdges"
+      aria-hidden
+    >
+      {rows.map((row, y) =>
+        Array.from(row).map((ch, x) => {
+          const fill = CELL_FILL[ch];
+          if (!fill) return null;
+          return (
+            <rect
+              key={`${x}-${y}`}
+              x={x * STRIDE}
+              y={y * STRIDE}
+              width={CELL}
+              height={CELL}
+              fill={fill}
+              className={ch === '4' ? 'anim-pixel-pulse' : undefined}
+              style={ch === '4' ? { animationDelay: `${(x + y) * 90}ms` } : undefined}
+            />
+          );
+        }),
+      )}
+    </svg>
+  );
+}

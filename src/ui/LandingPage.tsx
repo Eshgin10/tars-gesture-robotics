@@ -40,21 +40,29 @@ const STEPS: [string, StepVisualKind, string, string][] = [
   ['03', 'pinch', 'Pinch', 'Close your thumb and index finger to grab a part, and open them to drop it.'],
 ];
 
-const SPECS: [string, string, string][] = [
-  ['J1 · Base', 'Yaw', '±165°'],
-  ['J2 · Shoulder', 'Pitch', '−35° to 155°'],
-  ['J3 · Elbow', 'Pitch', '−165° to 60°'],
-  ['J4 · Forearm', 'Roll', '±180°'],
-  ['J5 · Wrist', 'Pitch', '±135°'],
-  ['J6 · Tool', 'Roll', '±200°'],
-  ['Gripper', 'Parallel', '0 – 95 mm'],
+const JOINT_TICKERS = [
+  'J1 · ±165°',
+  'J2 · −35/155°',
+  'J3 · −165/60°',
+  'J4 · ±180°',
+  'J5 · ±135°',
+  'J6 · ±200°',
 ];
 
-const STACK: [string, string][] = [
-  ['React Three Fiber', 'Renders the workcell, articulated arm and objects in the browser.'],
-  ['MediaPipe Hand Landmarker', 'Tracks your hand locally on your device with no video uploaded.'],
-  ['Analytical inverse kinematics', 'Turns each hand position into smooth joint angles in real time.'],
-  ['Optional ROS 2 bridge', 'Publishes joint states and commands for experiments with hardware.'],
+const JOINT_BARS = [
+  { id: 'J1', role: 'BASE', range: '±165°', span: 330, h: 66 },
+  { id: 'J2', role: 'SHOULDER', range: '−35°..155°', span: 190, h: 38 },
+  { id: 'J3', role: 'ELBOW', range: '−165°..60°', span: 225, h: 45 },
+  { id: 'J4', role: 'FOREARM', range: '±180°', span: 360, h: 72 },
+  { id: 'J5', role: 'WRIST', range: '±135°', span: 270, h: 54 },
+  { id: 'J6', role: 'TOOL', range: '±200°', span: 400, h: 84 },
+];
+
+const LINK_SEGMENTS = [
+  ['L1', '0.32m'],
+  ['L2', '0.42m'],
+  ['L3', '0.38m'],
+  ['L4', '0.19m'],
 ];
 
 const FAQ: [string, string][] = [
@@ -71,6 +79,8 @@ const FAQ: [string, string][] = [
 export function LandingPage() {
   const set = useBridge((s) => s.set);
   const [faq, setFaq] = useState<number | null>(0);
+  const [activeJoint, setActiveJoint] = useState(5);
+  const selectedJoint = JOINT_BARS[activeJoint];
 
   const enter = () => set({ user: { name: 'Operator', email: '' }, view: 'workspace' });
 
@@ -317,57 +327,264 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ---------------- Technical Specification & Architecture ---------------- */}
+        {/* ---------------- Visual Telemetry & Specs Bento ---------------- */}
         <Reveal>
-          <section id="specs" className="mt-28 rounded-[32px] border border-white/[0.06] bg-[#0b0b0c] p-7 md:mt-36 md:p-12">
-            <div className="grid gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-12">
-              <div className="flex flex-col justify-between">
-                <div>
-                  <SectionEyebrow>Specs</SectionEyebrow>
-                  <h2 className="mt-2 text-[30px] font-medium leading-[1.1] tracking-[-0.025em] md:text-[36px]">
-                    Meet the TARS arm
-                  </h2>
+          <section id="specs" className="mt-28 rounded-[28px] border border-white/[0.08] bg-[#0b0b0c] p-3 md:mt-36 md:p-5">
+            {/* Top telemetry ticker bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-3 pb-3.5 pt-1 font-mono text-[10.5px] uppercase tracking-[0.1em]">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/55">
+                <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 text-white/75" fill="currentColor" aria-hidden>
+                  {[0, 5, 10].flatMap((y) => [0, 5, 10].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.5" />))}
+                </svg>
+                {JOINT_TICKERS.map((item) => (
+                  <span key={item} className="tnum">
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <div className="inline-flex items-center gap-2 text-white/70">
+                <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden />
+                <span>Simulator · Ready</span>
+              </div>
+            </div>
 
-                  <div className="mt-7 grid grid-cols-3 gap-4 border-y border-white/[0.06] py-5">
-                    {[
-                      ['Axes', '6'],
-                      ['Reach', '78.8 cm'],
-                      ['Stroke', '95 mm'],
-                    ].map(([k, v]) => (
-                      <div key={k}>
-                        <div className="mb-2 h-0.5 w-5 bg-signal" aria-hidden />
-                        <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-white/40">{k}</div>
-                        <div className="mt-1 text-[24px] font-medium tracking-[-0.03em] md:text-[28px]">{v}</div>
-                      </div>
+            {/* Upper bento row */}
+            <div className="mt-3 grid gap-2.5 md:grid-cols-12">
+              {/* Col 1-3: Stacked 2 tiles */}
+              <div className="flex flex-col gap-2.5 md:col-span-3">
+                <div className="flex flex-1 flex-col justify-between rounded-xl bg-signal p-5 text-[#0a0a0b]">
+                  <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-[0.12em] text-black/75">
+                    <span>Active axes</span>
+                    <span>:</span>
+                  </div>
+                  <div className="mt-6 flex items-baseline justify-between">
+                    <span className="tnum font-mono text-[40px] font-medium leading-none">6</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-black/70">/ 6 DOF</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-1 flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5">
+                  <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">
+                    <span>Hand landmarks</span>
+                    <span>:</span>
+                  </div>
+                  <div className="mt-6 flex items-baseline justify-between">
+                    <span className="tnum font-mono text-[40px] font-medium leading-none text-[#ecece8]">21</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ Frame</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Col 4-6: Tall fraction & total tile */}
+              <div className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5 md:col-span-3">
+                <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">
+                  <span>Gripper stroke</span>
+                  <span>:</span>
+                </div>
+                <div className="mt-10">
+                  <div className="flex items-baseline justify-between">
+                    <span className="tnum font-mono text-[44px] font-medium leading-none text-[#ecece8]">95</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ 95 mm</span>
+                  </div>
+                  <div className="my-3.5 border-t border-white/[0.08]" />
+                  <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-[0.08em]">
+                    <span className="text-white/40">Parallel</span>
+                    <span className="tnum text-white/75">0 – 95 mm</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Col 7-12: Wide bar-chart tile */}
+              <div className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5 md:col-span-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">Joint range (deg)</span>
+                  <div className="flex items-center gap-1 font-mono text-[10px]">
+                    {JOINT_BARS.map((j, i) => (
+                      <button
+                        key={j.id}
+                        type="button"
+                        onClick={() => setActiveJoint(i)}
+                        className={`rounded px-1.5 py-0.5 transition-colors ${
+                          activeJoint === i ? 'bg-white/10 text-[#ecece8]' : 'text-white/35 hover:text-white/70'
+                        }`}
+                      >
+                        {j.id}
+                      </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  {STACK.map(([t, d], i) => (
-                    <div key={t} className="rounded-2xl border border-white/[0.06] bg-[#111114] p-4">
-                      <div className="font-mono text-[10.5px] text-white/35">0{i + 1}</div>
-                      <div className="mt-3 text-[14.5px] font-medium tracking-[-0.01em]">{t}</div>
-                      <p className="mt-1 text-[12px] leading-relaxed text-white/45">{d}</p>
+                <div className="mt-8 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+                  <div>
+                    <div className="tnum font-mono text-[40px] font-medium leading-none text-[#ecece8]">{selectedJoint.span}°</div>
+                    <div className="mt-2 font-mono text-[10.5px] uppercase tracking-[0.1em] text-white/45">
+                      Max span ({selectedJoint.id})
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex items-end gap-2.5 self-end sm:gap-3">
+                    {JOINT_BARS.map((j, i) => {
+                      const active = activeJoint === i;
+                      return (
+                        <button
+                          key={j.id}
+                          type="button"
+                          onClick={() => setActiveJoint(i)}
+                          aria-label={`${j.id} ${j.role} ${j.range}`}
+                          className="group relative flex flex-col items-center focus:outline-none"
+                        >
+                          {active && (
+                            <div className="mb-2 whitespace-nowrap text-center font-mono text-[9.5px] leading-tight">
+                              <div className="text-[#ecece8]">{j.range}</div>
+                              <div className="text-white/45">
+                                {j.id} {j.role}
+                              </div>
+                            </div>
+                          )}
+                          <div
+                            style={{ height: `${j.h}px` }}
+                            className={`w-7 rounded-t-sm transition-colors duration-200 sm:w-8 ${
+                              active ? 'bg-signal' : 'bg-[#ecece8]/75 group-hover:bg-[#ecece8]'
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Lower bento row */}
+            <div className="mt-2.5 grid gap-2.5 md:grid-cols-12">
+              {/* Col 1-3: Link lengths */}
+              <div className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5 md:col-span-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">Link lengths</span>
+                  <button
+                    type="button"
+                    onClick={enter}
+                    aria-label="Open workcell"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ecece8] text-[12px] text-[#0a0a0b] transition-transform hover:scale-105"
+                  >
+                    ↗
+                  </button>
+                </div>
+
+                <div className="mt-6">
+                  <div className="flex items-baseline justify-between">
+                    <span className="tnum font-mono text-[38px] font-medium leading-none text-[#ecece8]">1.31</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ M chain</span>
+                  </div>
+                  <div className="my-3.5 border-t border-white/[0.08]" />
+                  <div className="grid grid-cols-2 gap-1.5 font-mono text-[10.5px]">
+                    {LINK_SEGMENTS.map(([seg, len]) => (
+                      <div key={seg} className="flex items-center justify-between rounded border border-white/[0.06] bg-[#0b0b0c] px-2.5 py-1.5">
+                        <span className="text-white/45">{seg}</span>
+                        <span className="tnum text-[#ecece8]">{len}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col justify-center rounded-2xl border border-white/[0.06] bg-[#111114] p-6 md:p-8">
-                <div className="grid grid-cols-3 border-b border-white/[0.08] pb-3 font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/35">
-                  <span>Joint</span>
-                  <span>Axis</span>
-                  <span className="text-right">Limits</span>
+              {/* Col 4-6: Geometric wireframe card */}
+              <div className="relative flex min-h-[240px] flex-col justify-between overflow-hidden rounded-xl border border-white/[0.08] bg-[#1a1a1f] p-5 md:col-span-3">
+                <svg
+                  width="124"
+                  height="124"
+                  viewBox="0 0 124 124"
+                  fill="none"
+                  className="pointer-events-none absolute -right-4 -top-4"
+                  aria-hidden
+                >
+                  <circle cx="68" cy="56" r="46" stroke="rgba(236,236,232,0.22)" strokeWidth="1" />
+                  <path d="M24 38 L68 56 L112 24 M68 56 L92 102" stroke="rgba(236,236,232,0.2)" strokeWidth="1" />
+                  <circle cx="68" cy="56" r="2.5" fill="#ff4f28" />
+                </svg>
+
+                <div className="h-10" aria-hidden />
+                <div>
+                  <div className="font-mono text-[15px] uppercase leading-tight tracking-[0.04em] text-[#ecece8]">
+                    Closed-form
+                    <br />
+                    IK solver
+                  </div>
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-white/50">
+                    Analytical top-down wrist solver with bench collision floor.
+                  </p>
+                  <div className="mt-4 flex items-center gap-1.5" aria-hidden>
+                    <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/15" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/15" />
+                  </div>
                 </div>
-                <div className="divide-y divide-white/[0.06]">
-                  {SPECS.map(([j, type, range]) => (
-                    <div key={j} className="grid grid-cols-3 rounded px-1 py-3.5 text-[13.5px] transition-colors duration-200 hover:bg-white/[0.025]">
-                      <span className="text-[#ecece8]">{j}</span>
-                      <span className="text-white/45">{type}</span>
-                      <span className="tnum text-right font-mono text-[12.5px] text-white/75">{range}</span>
+              </div>
+
+              {/* Col 7-12: 2 top metric tiles + wide ivory banner */}
+              <div className="flex flex-col gap-2.5 md:col-span-6">
+                <div className="grid flex-1 gap-2.5 sm:grid-cols-2">
+                  {/* Progress bar stat */}
+                  <div className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5">
+                    <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">Safe home speed</div>
+                    <div className="mt-6">
+                      <div className="flex items-baseline justify-between">
+                        <span className="tnum font-mono text-[36px] font-medium leading-none text-[#ecece8]">45%</span>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ 100% max</span>
+                      </div>
+                      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                        <div className="h-full w-[45%] rounded-full bg-signal" />
+                      </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Circular ring gauge */}
+                  <div className="flex items-center justify-center rounded-xl border border-white/[0.06] bg-[#141417] p-5">
+                    <div className="relative flex h-[148px] w-[148px] items-center justify-center">
+                      <svg width="148" height="148" viewBox="0 0 148 148" className="-rotate-[120deg]" aria-hidden>
+                        <circle cx="74" cy="74" r="58" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+                        <circle
+                          cx="74"
+                          cy="74"
+                          r="58"
+                          fill="none"
+                          stroke="#ff4f28"
+                          strokeWidth="6"
+                          strokeLinecap="round"
+                          strokeDasharray="275 364"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="tnum font-mono text-[26px] font-medium leading-none text-[#ecece8]">0.79m</span>
+                        <span className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.12em] text-white/45">Bench reach</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wide warm-ivory bottom banner */}
+                <div className="flex min-h-[110px] flex-col justify-between rounded-xl bg-[#ecece8] p-5 text-[#0a0a0b]">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={enter}
+                      aria-label="Open workcell"
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0a0a0b] text-[13px] text-[#ecece8] transition-transform hover:scale-105"
+                    >
+                      ↗
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+                    <div className="font-mono text-[15px] font-medium uppercase leading-tight tracking-[0.04em]">
+                      WebGL + WASM
+                      <br />
+                      Runtime stack
+                    </div>
+                    <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-black/65">
+                      Three.js · MediaPipe · ROS 2
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,8 +1,30 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useBridge } from '../state/store';
 import { ConcaveFillet } from './ConcaveFillet';
 import { Reveal } from './Reveal';
 import { StepPixelVisual, StepVisualKind } from './StepPixelVisual';
+
+function useCountUp(target: number, active: boolean, duration = 1100, decimals = 0) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setVal(target);
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 4);
+      setVal(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, duration, target]);
+  return decimals > 0 ? val.toFixed(decimals) : Math.round(val).toString();
+}
 
 /* ------------------------------------------------------------------ */
 /* Small building blocks                                               */
@@ -80,7 +102,49 @@ export function LandingPage() {
   const set = useBridge((s) => s.set);
   const [faq, setFaq] = useState<number | null>(0);
   const [activeJoint, setActiveJoint] = useState(5);
+  const [chartHovered, setChartHovered] = useState(false);
+  const [specsInView, setSpecsInView] = useState(false);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const specsRef = useRef<HTMLElement>(null);
   const selectedJoint = JOINT_BARS[activeJoint];
+
+  useEffect(() => {
+    const el = specsRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setSpecsInView(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setSpecsInView(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.15 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!specsInView || chartHovered) return;
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      setActiveJoint((j) => (j + 1) % JOINT_BARS.length);
+    }, 2400);
+    return () => window.clearInterval(id);
+  }, [specsInView, chartHovered]);
+
+  const axesCount = useCountUp(6, specsInView, 850);
+  const landmarksCount = useCountUp(21, specsInView, 1000);
+  const strokeCount = useCountUp(95, specsInView, 1100);
+  const chainCount = useCountUp(1.31, specsInView, 1150, 2);
+  const speedCount = useCountUp(45, specsInView, 1100);
+  const reachCount = useCountUp(0.79, specsInView, 1200, 2);
 
   const enter = () => set({ user: { name: 'Operator', email: '' }, view: 'workspace' });
 
@@ -88,7 +152,17 @@ export function LandingPage() {
     <div className="min-h-screen w-full bg-[#050506] font-sans text-[#ecece8] antialiased selection:bg-signal selection:text-[#0a0a0b]">
       <main className="mx-auto max-w-[1200px] px-3 pt-3 md:px-5 md:pt-5">
         {/* ---------------- Hero panel (enclosed nav + 6x4 stepped grid) ---------------- */}
-        <section className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-[#0b0b0c] p-4 md:p-7">
+        <section
+          onMouseMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setMouse({
+              x: ((e.clientX - r.left) / r.width - 0.5) * 2,
+              y: ((e.clientY - r.top) / r.height - 0.5) * 2,
+            });
+          }}
+          onMouseLeave={() => setMouse({ x: 0, y: 0 })}
+          className="relative overflow-hidden rounded-[32px] border border-white/[0.08] bg-[#0b0b0c] p-4 md:p-7"
+        >
           {/* Enclosed pill navbar */}
           <header className="flex h-12 items-center justify-between rounded-full border border-white/15 bg-[#050506]/60 px-4 backdrop-blur-md md:px-6">
             <div className="flex items-center gap-2.5">
@@ -111,25 +185,28 @@ export function LandingPage() {
           </header>
 
           {/* 6-column x 4-row stepped architectural grid */}
-          <div className="anim-hero-up mt-5 grid grid-cols-1 gap-3 md:mt-7 md:grid-cols-[1.85fr_0.9fr_0.85fr_1.45fr_1fr_1fr] md:gap-0">
+          <div className="mt-5 grid grid-cols-1 gap-3 md:mt-7 md:grid-cols-[1.85fr_0.9fr_0.85fr_1.45fr_1fr_1fr] md:gap-0">
             {/* Main headline canvas: Cols 1-3, Rows 1-2 */}
             <div className="flex items-center rounded-[24px] bg-[#ecece8] p-7 text-[#0a0a0b] md:col-span-3 md:col-start-1 md:row-span-2 md:row-start-1 md:rounded-none md:rounded-bl-[24px] md:rounded-tl-[24px] md:p-11">
               <h1 className="text-[42px] font-medium leading-[1.02] tracking-[-0.04em] md:text-[56px] lg:text-[62px]">
-                Your hand
-                <br />
-                is the
-                <br />
-                controller.
-                <br />
-                Zero hardware.
+                {['Your hand', 'is the', 'controller.', 'Zero hardware.'].map((line, i) => (
+                  <span key={line} className="block overflow-hidden pb-[0.04em]">
+                    <span className="anim-line-mask block" style={{ animationDelay: `${i * 85}ms` }}>
+                      {line}
+                    </span>
+                  </span>
+                ))}
               </h1>
             </div>
 
             {/* Upper-center white extension: Col 4, Row 1 */}
-            <div className="hidden bg-[#ecece8] md:col-start-4 md:row-start-1 md:block md:min-h-[128px] md:rounded-tr-[24px]" />
+            <div
+              className="anim-lobe-x hidden bg-[#ecece8] md:col-start-4 md:row-start-1 md:block md:min-h-[128px] md:rounded-tr-[24px]"
+              style={{ animationDelay: '180ms' }}
+            />
 
             {/* Top-right dark callout: Col 5, Row 1 */}
-            <div className="relative flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-5 md:row-start-1 md:min-h-[128px] md:rounded-none">
+            <div className="anim-hero-up relative flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-5 md:row-start-1 md:min-h-[128px] md:rounded-none" style={{ animationDelay: '220ms' }}>
               <ConcaveFillet corner="bl" size={22} className="hidden md:block" />
               <span className="font-mono text-[15px] leading-none text-signal">+</span>
               <div className="mt-4">
@@ -143,7 +220,8 @@ export function LandingPage() {
               type="button"
               onClick={enter}
               aria-label="Open workcell"
-              className="group hidden items-end justify-end rounded-[24px] bg-signal p-5 text-[#0a0a0b] transition-colors hover:bg-[#ff6240] active:scale-[0.98] md:col-start-6 md:row-start-1 md:flex md:min-h-[128px]"
+              style={{ animationDelay: '280ms' }}
+              className="anim-hero-up group hidden items-end justify-end rounded-[24px] bg-signal p-5 text-[#0a0a0b] transition-colors hover:bg-[#ff6240] active:scale-[0.98] md:col-start-6 md:row-start-1 md:flex md:min-h-[128px]"
             >
               <span className="text-[26px] leading-none transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden>
                 ↗
@@ -153,20 +231,55 @@ export function LandingPage() {
             {/* Central dark rounded visual window: Col 4, Row 2 */}
             <div className="rounded-[20px] bg-[#ecece8] p-2 md:col-start-4 md:row-start-2 md:rounded-none">
               <div className="anim-hero-media relative aspect-[5/4] h-full w-full overflow-hidden rounded-[20px] bg-[#060607] ring-1 ring-black/10">
-                <Img
-                  src="/img/hero-keyboard.jpg"
-                  fallback="/img/hero-arm.jpg"
-                  alt="Human and robotic hands side by side on a matte black keyboard"
-                  className="h-full w-full object-cover object-center"
+                <div
+                  style={{ transform: `translate3d(${mouse.x * 8}px, ${mouse.y * 8}px, 0) scale(1.06)` }}
+                  className="h-full w-full transition-transform duration-300 ease-out"
+                >
+                  <Img
+                    src="/img/hero-keyboard.jpg"
+                    fallback="/img/hero-arm.jpg"
+                    alt="Human and robotic hands side by side on a matte black keyboard"
+                    className="h-full w-full object-cover object-center"
+                  />
+                </div>
+                {/* Vision HUD scanline & tracking reticles */}
+                <div
+                  aria-hidden
+                  className="anim-scanline pointer-events-none absolute inset-x-3 h-px bg-gradient-to-r from-transparent via-signal/80 to-transparent"
                 />
+                <span
+                  aria-hidden
+                  style={{ transform: `translate3d(${mouse.x * -5}px, ${mouse.y * -5}px, 0)` }}
+                  className="pointer-events-none absolute left-[28%] top-[56%] flex h-3 w-3 items-center justify-center transition-transform duration-300 ease-out"
+                >
+                  <span className="absolute h-3 w-3 animate-ping rounded-full bg-signal/40" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+                </span>
+                <span
+                  aria-hidden
+                  style={{ transform: `translate3d(${mouse.x * -5}px, ${mouse.y * -5}px, 0)` }}
+                  className="pointer-events-none absolute left-[64%] top-[54%] flex h-3 w-3 items-center justify-center transition-transform duration-300 ease-out"
+                >
+                  <span className="absolute h-3 w-3 animate-ping rounded-full bg-[#ecece8]/30" style={{ animationDelay: '700ms' }} />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ecece8]" />
+                </span>
+                <div aria-hidden className="pointer-events-none absolute inset-2.5">
+                  <span className="absolute left-0 top-0 h-2.5 w-2.5 border-l border-t border-white/30" />
+                  <span className="absolute right-0 top-0 h-2.5 w-2.5 border-r border-t border-white/30" />
+                  <span className="absolute bottom-0 left-0 h-2.5 w-2.5 border-b border-l border-white/30" />
+                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 border-b border-r border-white/30" />
+                </div>
               </div>
             </div>
 
             {/* Middle-right white lobe: Col 5, Row 2 */}
-            <div className="hidden bg-[#ecece8] md:col-start-5 md:row-start-2 md:block md:min-h-[128px] md:rounded-r-[24px]" />
+            <div
+              className="anim-lobe-x hidden bg-[#ecece8] md:col-start-5 md:row-start-2 md:block md:min-h-[128px] md:rounded-r-[24px]"
+              style={{ animationDelay: '260ms' }}
+            />
 
             {/* Bottom-left dark cutout: Col 1, Rows 3-4 */}
-            <div className="relative flex flex-col justify-between rounded-[20px] p-3 pt-4 md:col-start-1 md:row-span-2 md:row-start-3 md:rounded-none md:p-6 md:pr-8">
+            <div className="anim-hero-up relative flex flex-col justify-between rounded-[20px] p-3 pt-4 md:col-start-1 md:row-span-2 md:row-start-3 md:rounded-none md:p-6 md:pr-8" style={{ animationDelay: '300ms' }}>
               <ConcaveFillet corner="tr" size={22} className="hidden md:block" />
               <p className="max-w-[270px] text-[13px] leading-relaxed text-white/60">
                 Control a simulated robotic arm in real time using your webcam or mouse. No controllers and no setup.
@@ -186,7 +299,10 @@ export function LandingPage() {
             </div>
 
             {/* Left downward white tooth: Col 2, Row 3 */}
-            <div className="hidden bg-[#ecece8] md:col-start-2 md:row-start-3 md:block md:min-h-[128px] md:rounded-b-[24px]" />
+            <div
+              className="anim-lobe-y hidden bg-[#ecece8] md:col-start-2 md:row-start-3 md:block md:min-h-[128px] md:rounded-b-[24px]"
+              style={{ animationDelay: '340ms' }}
+            />
 
             {/* Middle dark cutout: Col 3, Rows 3-4 */}
             <div className="relative hidden md:col-start-3 md:row-span-2 md:row-start-3 md:block">
@@ -195,7 +311,10 @@ export function LandingPage() {
             </div>
 
             {/* Lower-center white lobe: Col 4, Row 3 */}
-            <div className="hidden bg-[#ecece8] md:col-start-4 md:row-start-3 md:block md:min-h-[128px] md:rounded-bl-[24px]" />
+            <div
+              className="anim-lobe-y hidden bg-[#ecece8] md:col-start-4 md:row-start-3 md:block md:min-h-[128px] md:rounded-bl-[24px]"
+              style={{ animationDelay: '420ms' }}
+            />
 
             {/* Middle-right dark cutout bridging diagonal kiss: Col 5, Row 3 */}
             <div className="relative hidden md:col-start-5 md:row-start-3 md:block md:min-h-[128px]">
@@ -204,7 +323,7 @@ export function LandingPage() {
             </div>
 
             {/* Bottom-center dark callout bridging diagonal kiss: Col 4, Row 4 */}
-            <div className="relative flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-4 md:row-start-4 md:min-h-[128px] md:rounded-none">
+            <div className="anim-hero-up relative flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-4 md:row-start-4 md:min-h-[128px] md:rounded-none" style={{ animationDelay: '460ms' }}>
               <ConcaveFillet corner="tr" size={22} className="hidden md:block" />
               <span className="font-mono text-[15px] leading-none text-signal">+</span>
               <div className="mt-4">
@@ -214,11 +333,14 @@ export function LandingPage() {
             </div>
 
             {/* Bottom-right white lobe: Col 5, Row 4 */}
-            <div className="hidden bg-[#ecece8] md:col-start-5 md:row-start-4 md:block md:min-h-[128px] md:rounded-b-[24px] md:rounded-tr-[24px]" />
+            <div
+              className="anim-lobe-y hidden bg-[#ecece8] md:col-start-5 md:row-start-4 md:block md:min-h-[128px] md:rounded-b-[24px] md:rounded-tr-[24px]"
+              style={{ animationDelay: '500ms' }}
+            />
 
             {/* Bottom-right dark callout: Col 6, Rows 3-4 */}
-            <div className="flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-6 md:row-span-2 md:row-start-3 md:rounded-none">
-              <svg width="18" height="18" viewBox="0 0 18 18" className="text-signal" fill="none" aria-hidden>
+            <div className="anim-hero-up flex flex-col justify-between rounded-[20px] p-5 text-white md:col-start-6 md:row-span-2 md:row-start-3 md:rounded-none" style={{ animationDelay: '520ms' }}>
+              <svg width="18" height="18" viewBox="0 0 18 18" className="anim-spin-slow text-signal" fill="none" aria-hidden>
                 <path d="M9 1V17M1 9H17M3.3 3.3L14.7 14.7M14.7 3.3L3.3 14.7" stroke="currentColor" strokeWidth="1.2" />
               </svg>
               <div className="mt-4">
@@ -329,21 +451,25 @@ export function LandingPage() {
 
         {/* ---------------- Visual Telemetry & Specs Bento ---------------- */}
         <Reveal>
-          <section id="specs" className="mt-28 rounded-[28px] border border-white/[0.08] bg-[#0b0b0c] p-3 md:mt-36 md:p-5">
+          <section
+            id="specs"
+            ref={specsRef}
+            className="mt-28 rounded-[28px] border border-white/[0.08] bg-[#0b0b0c] p-3 md:mt-36 md:p-5"
+          >
             {/* Top telemetry ticker bar */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.07] px-3 pb-3.5 pt-1 font-mono text-[10.5px] uppercase tracking-[0.1em]">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-white/55">
                 <svg width="14" height="14" viewBox="0 0 14 14" className="shrink-0 text-white/75" fill="currentColor" aria-hidden>
                   {[0, 5, 10].flatMap((y) => [0, 5, 10].map((x) => <rect key={`${x}-${y}`} x={x} y={y} width="3" height="3" rx="0.5" />))}
                 </svg>
-                {JOINT_TICKERS.map((item) => (
-                  <span key={item} className="tnum">
+                {JOINT_TICKERS.map((item, i) => (
+                  <span key={item} className={`tnum transition-colors duration-300 ${i === activeJoint ? 'text-signal' : ''}`}>
                     {item}
                   </span>
                 ))}
               </div>
               <div className="inline-flex items-center gap-2 text-white/70">
-                <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-signal" aria-hidden />
                 <span>Simulator · Ready</span>
               </div>
             </div>
@@ -358,7 +484,7 @@ export function LandingPage() {
                     <span>:</span>
                   </div>
                   <div className="mt-6 flex items-baseline justify-between">
-                    <span className="tnum font-mono text-[40px] font-medium leading-none">6</span>
+                    <span className="tnum font-mono text-[40px] font-medium leading-none">{axesCount}</span>
                     <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-black/70">/ 6 DOF</span>
                   </div>
                 </div>
@@ -369,7 +495,7 @@ export function LandingPage() {
                     <span>:</span>
                   </div>
                   <div className="mt-6 flex items-baseline justify-between">
-                    <span className="tnum font-mono text-[40px] font-medium leading-none text-[#ecece8]">21</span>
+                    <span className="tnum font-mono text-[40px] font-medium leading-none text-[#ecece8]">{landmarksCount}</span>
                     <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ Frame</span>
                   </div>
                 </div>
@@ -383,7 +509,7 @@ export function LandingPage() {
                 </div>
                 <div className="mt-10">
                   <div className="flex items-baseline justify-between">
-                    <span className="tnum font-mono text-[44px] font-medium leading-none text-[#ecece8]">95</span>
+                    <span className="tnum font-mono text-[44px] font-medium leading-none text-[#ecece8]">{strokeCount}</span>
                     <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ 95 mm</span>
                   </div>
                   <div className="my-3.5 border-t border-white/[0.08]" />
@@ -395,7 +521,11 @@ export function LandingPage() {
               </div>
 
               {/* Col 7-12: Wide bar-chart tile */}
-              <div className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5 md:col-span-6">
+              <div
+                onMouseEnter={() => setChartHovered(true)}
+                onMouseLeave={() => setChartHovered(false)}
+                className="flex flex-col justify-between rounded-xl border border-white/[0.06] bg-[#141417] p-5 md:col-span-6"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">Joint range (deg)</span>
                   <div className="flex items-center gap-1 font-mono text-[10px]">
@@ -442,8 +572,11 @@ export function LandingPage() {
                             </div>
                           )}
                           <div
-                            style={{ height: `${j.h}px` }}
-                            className={`w-7 rounded-t-sm transition-colors duration-200 sm:w-8 ${
+                            style={{
+                              height: specsInView ? `${j.h}px` : '0px',
+                              transitionDelay: `${i * 55}ms`,
+                            }}
+                            className={`w-7 rounded-t-sm transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] sm:w-8 ${
                               active ? 'bg-signal' : 'bg-[#ecece8]/75 group-hover:bg-[#ecece8]'
                             }`}
                           />
@@ -473,7 +606,7 @@ export function LandingPage() {
 
                 <div className="mt-6">
                   <div className="flex items-baseline justify-between">
-                    <span className="tnum font-mono text-[38px] font-medium leading-none text-[#ecece8]">1.31</span>
+                    <span className="tnum font-mono text-[38px] font-medium leading-none text-[#ecece8]">{chainCount}</span>
                     <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ M chain</span>
                   </div>
                   <div className="my-3.5 border-t border-white/[0.08]" />
@@ -499,8 +632,11 @@ export function LandingPage() {
                   aria-hidden
                 >
                   <circle cx="68" cy="56" r="46" stroke="rgba(236,236,232,0.22)" strokeWidth="1" />
-                  <path d="M24 38 L68 56 L112 24 M68 56 L92 102" stroke="rgba(236,236,232,0.2)" strokeWidth="1" />
-                  <circle cx="68" cy="56" r="2.5" fill="#ff4f28" />
+                  <g className="anim-ik-arm">
+                    <path d="M24 38 L68 56 L112 24 M68 56 L92 102" stroke="rgba(236,236,232,0.3)" strokeWidth="1.2" />
+                    <circle cx="112" cy="24" r="2" fill="#ecece8" />
+                  </g>
+                  <circle cx="68" cy="56" r="2.8" fill="#ff4f28" />
                 </svg>
 
                 <div className="h-10" aria-hidden />
@@ -514,10 +650,14 @@ export function LandingPage() {
                     Analytical top-down wrist solver with bench collision floor.
                   </p>
                   <div className="mt-4 flex items-center gap-1.5" aria-hidden>
-                    <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/15" />
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/15" />
+                    {[0, 1, 2, 3].map((dot) => (
+                      <span
+                        key={dot}
+                        className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${
+                          activeJoint % 4 === dot ? 'bg-signal' : 'bg-white/20'
+                        }`}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -530,11 +670,14 @@ export function LandingPage() {
                     <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-white/55">Safe home speed</div>
                     <div className="mt-6">
                       <div className="flex items-baseline justify-between">
-                        <span className="tnum font-mono text-[36px] font-medium leading-none text-[#ecece8]">45%</span>
+                        <span className="tnum font-mono text-[36px] font-medium leading-none text-[#ecece8]">{speedCount}%</span>
                         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">/ 100% max</span>
                       </div>
                       <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
-                        <div className="h-full w-[45%] rounded-full bg-signal" />
+                        <div
+                          style={{ width: specsInView ? '45%' : '0%' }}
+                          className="h-full rounded-full bg-signal transition-all duration-[1200ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+                        />
                       </div>
                     </div>
                   </div>
@@ -552,11 +695,12 @@ export function LandingPage() {
                           stroke="#ff4f28"
                           strokeWidth="6"
                           strokeLinecap="round"
-                          strokeDasharray="275 364"
+                          strokeDasharray={specsInView ? '275 364' : '0 364'}
+                          className="transition-all duration-[1400ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span className="tnum font-mono text-[26px] font-medium leading-none text-[#ecece8]">0.79m</span>
+                        <span className="tnum font-mono text-[26px] font-medium leading-none text-[#ecece8]">{reachCount}m</span>
                         <span className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.12em] text-white/45">Bench reach</span>
                       </div>
                     </div>

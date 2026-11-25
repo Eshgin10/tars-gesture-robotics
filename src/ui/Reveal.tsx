@@ -2,13 +2,13 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 
 /**
  * Scroll-triggered entrance transition using IntersectionObserver.
- * Respects `prefers-reduced-motion` via CSS and triggers once when entering the viewport.
+ * Combines blur dissolve, scale settle, and vertical glide; respects `prefers-reduced-motion`.
  */
 export function Reveal({
   children,
   delay = 0,
   className = '',
-  y = 18,
+  y = 22,
 }: {
   children: ReactNode;
   delay?: number;
@@ -43,9 +43,10 @@ export function Reveal({
       ref={ref}
       style={{
         transitionDelay: `${delay}ms`,
-        transform: visible ? 'translate3d(0, 0, 0)' : `translate3d(0, ${y}px, 0)`,
+        transform: visible ? 'translate3d(0, 0, 0) scale(1)' : `translate3d(0, ${y}px, 0) scale(0.985)`,
+        filter: visible ? 'blur(0px)' : 'blur(6px)',
       }}
-      className={`reveal-block transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+      className={`reveal-block transition-[opacity,transform,filter] duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform ${
         visible ? 'opacity-100' : 'opacity-0'
       } ${className}`}
     >

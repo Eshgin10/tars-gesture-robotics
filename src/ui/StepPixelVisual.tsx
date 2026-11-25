@@ -2,7 +2,7 @@ export type StepVisualKind = 'move' | 'reach' | 'pinch';
 
 /**
  * Compact 11x11 pixel-art icons for the "How it works" cards.
- * '.' = transparent, '1' = dim, '2' = mid, '3' = primary ink (#ecece8), '4' = ice-cyan (#86d7f2)
+ * '.' = transparent, '1' = dim, '2' = mid, '3' = primary ink (#ecece8), '4' = signal orange (#ff4f28)
  */
 const PIXEL_ICONS: Record<StepVisualKind, string[]> = {
   move: [
@@ -50,7 +50,7 @@ const CELL_FILL: Record<string, string> = {
   '1': 'rgba(255,255,255,0.22)',
   '2': 'rgba(255,255,255,0.48)',
   '3': '#ecece8',
-  '4': '#86d7f2',
+  '4': '#ff4f28',
 };
 
 const GRID = 11;

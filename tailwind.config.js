@@ -21,6 +21,7 @@ export default {
         mute: '#7a7a7d',
         faint: '#4b4b50',
         accent: '#86d7f2', // ice cyan, used sparingly
+        signal: '#ff4f28', // landing accent — signal vermilion
         ok: '#62d39b',
         stop: '#ff4b3e',
         info: '#8fb0ff',
